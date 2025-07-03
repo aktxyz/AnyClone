@@ -525,12 +525,24 @@ namespace AnyClone
             var ignoreByNameOrPath = ignorePropertiesOrPaths?.Contains(name) == true || ignorePropertiesOrPaths?.Contains(path) == true;
             if (ignoreByNameOrPath)
                 return true;
+
 #if FEATURE_CUSTOM_ATTRIBUTES
             if (attributes?.Any(x => configuration.IgnorePropertiesWithAttributes?.Contains(x.AttributeType.Name) == true) == true)
+                return true;
 #else
             if (attributes?.Any(x => configuration.IgnorePropertiesWithAttributes?.Contains(x.Constructor.DeclaringType.Name) == true) == true)
-#endif
                 return true;
+#endif
+
+            // if ignore string is format /string/ then treat as a regex
+            var ignorePropertiesOrPathsRe = ignorePropertiesOrPaths.Select(x => (x.Length > 2 && x.StartsWith("/") && x.EndsWith("/")) ? x.Substring(1, x.Length - 2) : "").Where(x => x.Length > 0).ToList();
+            foreach (var re in ignorePropertiesOrPathsRe)
+            {
+                var rx = new System.Text.RegularExpressions.Regex(re);
+                if (rx.IsMatch(name) || rx.IsMatch(path))
+                    return true;
+            }
+            
             return false;
         }
 
